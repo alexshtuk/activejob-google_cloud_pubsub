@@ -35,7 +35,7 @@ module ActiveJob
             }
           rescue Concurrent::RejectedExecutionError
             Concurrent::Promise.execute(args: message) {|msg|
-              msg.delay! 10.seconds.to_i
+              msg.modify_ack_deadline! 10.seconds.to_i
 
               @logger&.info "Message(#{msg.message_id}) was rescheduled after 10 seconds because the thread pool is full."
             }.rescue {|e|
@@ -61,7 +61,7 @@ module ActiveJob
         else
           deadline = [message.remaining_time_to_schedule, MAX_DEADLINE.to_i].min
 
-          message.delay! deadline
+          message.modify_ack_deadline! deadline
 
           @logger&.info "Message(#{message.message_id}) was scheduled at #{message.scheduled_at} so it was rescheduled after #{deadline} seconds."
         end
@@ -75,7 +75,7 @@ module ActiveJob
         }
 
         delay_timer = Concurrent::TimerTask.execute(timer_opts) {
-          message.delay! MAX_DEADLINE.to_i
+          message.modify_ack_deadline! MAX_DEADLINE.to_i
         }
 
         begin
@@ -98,7 +98,7 @@ module ActiveJob
             @logger&.info "Message(#{message.message_id}) was acknowledged."
           else
             # terminated from outside
-            message.delay! 0
+            message.modify_ack_deadline! 0
           end
         end
       end
