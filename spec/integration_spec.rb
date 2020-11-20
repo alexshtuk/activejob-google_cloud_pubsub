@@ -27,7 +27,7 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
     run_worker pubsub: Google::Cloud::Pubsub.new(emulator_host: @pubsub_emulator_host, project_id: 'activejob-test'), &example
   end
 
-  example do
+  example 'it executes jobs' do
     GreetingJob.perform_later 'alice'
     GreetingJob.set(wait: 0.1).perform_later 'bob'
     GreetingJob.set(wait_until: Time.now + 0.2).perform_later 'charlie'
@@ -38,6 +38,54 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
         'hello, bob!',
         'hello, charlie!'
       )
+    end
+  end
+
+  context 'with before_publish callbacks in adapter' do
+    before(:all) do
+      @original_callbacks = [*ActiveJob::GoogleCloudPubsub::Adapter._before_publish_callbacks]
+
+      ActiveJob::GoogleCloudPubsub::Adapter
+          .before_publish(
+              ->(job) { job.arguments = job.arguments.map { |name| "Mrs. #{name}" } }
+          )
+    end
+
+    after(:all) do
+      ActiveJob::GoogleCloudPubsub::Adapter._before_publish_callbacks.clear
+      ActiveJob::GoogleCloudPubsub::Adapter._before_publish_callbacks.concat(@original_callbacks)
+    end
+
+    it 'respects callback' do
+      GreetingJob.perform_later 'Alice'
+
+      Timeout.timeout 3 do
+        expect($queue.pop).to eq('hello, Mrs. Alice!')
+      end
+    end
+  end
+
+  context 'with before_process callbacks in worker' do
+    before(:all) do
+      @original_callbacks = [*ActiveJob::GoogleCloudPubsub::Worker._before_process_callbacks]
+
+      ActiveJob::GoogleCloudPubsub::Worker
+          .before_process(
+              ->(job) { job['arguments'] = job['arguments'].map { |name| "Mrs. #{name}" } }
+          )
+    end
+
+    after(:all) do
+      ActiveJob::GoogleCloudPubsub::Worker._before_process_callbacks.clear
+      ActiveJob::GoogleCloudPubsub::Worker._before_process_callbacks.concat(@original_callbacks)
+    end
+
+    it 'respects callback' do
+      GreetingJob.perform_later 'Alice'
+
+      Timeout.timeout 3 do
+        expect($queue.pop).to eq('hello, Mrs. Alice!')
+      end
     end
   end
 

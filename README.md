@@ -124,6 +124,30 @@ Default: number of logical cores
 
 Credentials of Google Cloud Platform. Please see [the document](https://github.com/GoogleCloudPlatform/google-cloud-ruby/blob/master/AUTHENTICATION.md) for details.
 
+### before_publish and before_process callbacks
+
+Library supports callbacks which are executed before job is published to queue by the adapter and before job is processed by the worker
+ 
+This is an analogue of Sidekiq's Middlewares. 
+
+Helps solve, par example the problem of passing correlation ID for background jobs, so you can always tell which job was created by wich request
+
+Usage example (put this in config/initializers/google_pubsub_adapter.rb):
+
+``` ruby
+ActiveJob::GoogleCloudPubsub::Adapter
+  .before_publish(
+    ->(job) { job['__request_id'] = RequestHeadersMiddleware.store['X-Request-Id'.to_sym] } }
+  )
+
+ActiveJob::GoogleCloudPubsub::Worker
+  .before_process(
+    ->(job) { RequestHeadersMiddleware.store['X-Request-Id'.to_sym] = job['__request_id'] || SecureRandom.uuid }
+  )
+```
+
+(example relies on [RequestHeadersMiddleware](https://github.com/fidor/request_headers_middleware) - nice way to introduce correlation id to the system) 
+
 ## Development
 
 ``` sh

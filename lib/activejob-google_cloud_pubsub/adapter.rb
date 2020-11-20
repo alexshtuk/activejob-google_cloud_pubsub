@@ -9,6 +9,16 @@ module ActiveJob
     class Adapter
       using PubsubExtension
 
+      class << self
+        def before_publish(callback)
+          _before_publish_callbacks << callback
+        end
+
+        def _before_publish_callbacks
+          @before_publish_callbacks ||= []
+        end
+      end
+
       def initialize(async: true, pubsub: nil, logger: Logger.new($stdout))
         @executor = async ? :io : :immediate
         @pubsub   = pubsub
@@ -21,6 +31,7 @@ module ActiveJob
 
       def enqueue(job, attributes = {})
         Concurrent::Promise.execute(executor: @executor) {
+          self.class._before_publish_callbacks.each { |callback| callback.call(job) }
           pubsub.topic_for(job.queue_name).publish JSON.dump(job.serialize), attributes
         }.rescue {|e|
           @logger&.error e
