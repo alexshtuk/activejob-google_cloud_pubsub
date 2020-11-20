@@ -156,7 +156,7 @@ $ bundle exec rake spec
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/ursm/activejob-google_cloud_pubsub.
+Bug reports and pull requests are welcome.
 
 ## License
 
