@@ -16,7 +16,7 @@ module ActiveJob
       end
 
       def pubsub
-        @pubsub ||= Google::Cloud::Pubsub.new
+        @pubsub ||= Google::Cloud::Pubsub.new(**ActiveJob::GoogleCloudPubsub.pubsub_params.to_h)
       end
 
       def enqueue(job, attributes = {})

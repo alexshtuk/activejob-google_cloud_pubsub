@@ -124,6 +124,24 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
     end
   end
 
+  context 'with pubsub params in config' do
+    around :each do |example|
+      orig = ActiveJob::GoogleCloudPubsub.pubsub_params
+      ActiveJob::GoogleCloudPubsub.pubsub_params = {emulator_host: @pubsub_emulator_host, project_id: 'activejob-test'}
+
+      begin
+        example.run
+      ensure
+        ActiveJob::GoogleCloudPubsub.pubsub_params = orig
+      end
+    end
+
+    it 'repects params' do
+      expect(Google::Cloud::Pubsub).to receive(:new).with(project_id: 'activejob-test', emulator_host: @pubsub_emulator_host)
+      ActiveJob::GoogleCloudPubsub::Adapter.new.pubsub
+    end
+  end
+
   private
 
   def run_worker(&block)
