@@ -13,7 +13,7 @@ module ActiveJob
 
       using PubsubExtension
 
-      def initialize(queue: 'default', min_threads: 0, max_threads: Concurrent.processor_count, pubsub: nil, logger: Logger.new($stdout))
+      def initialize(queue: 'default', min_threads: 0, max_threads: Concurrent.processor_count, pubsub: nil, logger: nil)
         @queue_name  = queue
         @min_threads = min_threads
         @max_threads = max_threads
@@ -25,25 +25,29 @@ module ActiveJob
         @pubsub ||= Google::Cloud::Pubsub.new(**ActiveJob::GoogleCloudPubsub.pubsub_params.to_h)
       end
 
+      def logger
+        @logger ||= ActiveJob::GoogleCloudPubsub.logger || Logger.new($stdout)
+      end
+
       def run
         pool = Concurrent::ThreadPoolExecutor.new(min_threads: @min_threads, max_threads: @max_threads, max_queue: -1)
 
         pubsub.subscription_for(@queue_name).listen {|message|
-          @logger&.info "Message(#{message.message_id}) was received."
+          logger&.info "Message(#{message.message_id}) was received."
 
           begin
             Concurrent::Promise.execute(args: message, executor: pool) {|msg|
               process_or_delay msg
             }.rescue {|e|
-              @logger&.error e
+              logger&.error e
             }
           rescue Concurrent::RejectedExecutionError
             Concurrent::Promise.execute(args: message) {|msg|
               msg.modify_ack_deadline! 10.seconds.to_i
 
-              @logger&.info "Message(#{msg.message_id}) was rescheduled after 10 seconds because the thread pool is full."
+              logger&.info "Message(#{msg.message_id}) was rescheduled after 10 seconds because the thread pool is full."
             }.rescue {|e|
-              @logger&.error e
+              logger&.error e
             }
           end
         }.start
@@ -67,7 +71,7 @@ module ActiveJob
 
           message.modify_ack_deadline! deadline
 
-          @logger&.info "Message(#{message.message_id}) was scheduled at #{message.scheduled_at} so it was rescheduled after #{deadline} seconds."
+          logger&.info "Message(#{message.message_id}) was scheduled at #{message.scheduled_at} so it was rescheduled after #{deadline} seconds."
         end
       end
 
@@ -103,7 +107,7 @@ module ActiveJob
           if succeeded || failed
             message.acknowledge!
 
-            @logger&.info "Message(#{message.message_id}) was acknowledged."
+            logger&.info "Message(#{message.message_id}) was acknowledged."
           else
             # terminated from outside
             message.modify_ack_deadline! 0

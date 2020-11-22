@@ -147,6 +147,29 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
     end
   end
 
+  context 'when logger is specified in config' do
+    let!(:specific_logger) { Logger.new('logfile.log') }
+
+    around :each do |example|
+      orig = ActiveJob::GoogleCloudPubsub.logger
+      ActiveJob::GoogleCloudPubsub.logger = specific_logger
+
+      begin
+        example.run
+      ensure
+        ActiveJob::GoogleCloudPubsub.logger = orig
+      end
+    end
+
+    it 'uses this logger in adapter' do
+      expect(ActiveJob::GoogleCloudPubsub::Adapter.new.logger).to be(specific_logger)
+    end
+
+    it 'uses this logger  in worker' do
+      expect(ActiveJob::GoogleCloudPubsub::Worker.new.logger).to be(specific_logger)
+    end
+  end
+
   private
 
   def run_worker(&block)
