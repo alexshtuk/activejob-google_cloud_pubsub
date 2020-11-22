@@ -7,11 +7,17 @@ module ActiveJob
         def topic_for(queue_name)
           name = "activejob-queue-#{queue_name}"
 
+          formatter = ActiveJob::GoogleCloudPubsub.queue_name_formatter
+          name = formatter.call(name) if formatter
+
           topic(name) || create_topic(name)
         end
 
         def subscription_for(queue_name)
           name = "activejob-worker-#{queue_name}"
+
+          formatter = ActiveJob::GoogleCloudPubsub.queue_name_formatter
+          name = formatter.call(name) if formatter
 
           subscription(name) || topic_for(queue_name).subscribe(name)
         end
