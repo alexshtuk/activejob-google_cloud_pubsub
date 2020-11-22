@@ -136,9 +136,14 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
       end
     end
 
-    it 'repects params' do
+    it 'repects params in adapter' do
       expect(Google::Cloud::Pubsub).to receive(:new).with(project_id: 'activejob-test', emulator_host: @pubsub_emulator_host)
       ActiveJob::GoogleCloudPubsub::Adapter.new.pubsub
+    end
+
+    it 'repects params in worker' do
+      expect(Google::Cloud::Pubsub).to receive(:new).with(project_id: 'activejob-test', emulator_host: @pubsub_emulator_host)
+      ActiveJob::GoogleCloudPubsub::Worker.new.pubsub
     end
   end
 

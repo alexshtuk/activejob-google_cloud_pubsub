@@ -13,7 +13,7 @@ module ActiveJob
 
       using PubsubExtension
 
-      def initialize(queue: 'default', min_threads: 0, max_threads: Concurrent.processor_count, pubsub: Google::Cloud::Pubsub.new, logger: Logger.new($stdout))
+      def initialize(queue: 'default', min_threads: 0, max_threads: Concurrent.processor_count, pubsub: nil, logger: Logger.new($stdout))
         @queue_name  = queue
         @min_threads = min_threads
         @max_threads = max_threads
@@ -21,10 +21,14 @@ module ActiveJob
         @logger      = logger
       end
 
+      def pubsub
+        @pubsub ||= Google::Cloud::Pubsub.new(**ActiveJob::GoogleCloudPubsub.pubsub_params.to_h)
+      end
+
       def run
         pool = Concurrent::ThreadPoolExecutor.new(min_threads: @min_threads, max_threads: @max_threads, max_queue: -1)
 
-        @pubsub.subscription_for(@queue_name).listen {|message|
+        pubsub.subscription_for(@queue_name).listen {|message|
           @logger&.info "Message(#{message.message_id}) was received."
 
           begin
@@ -48,7 +52,7 @@ module ActiveJob
       end
 
       def ensure_subscription
-        @pubsub.subscription_for @queue_name
+        pubsub.subscription_for @queue_name
 
         nil
       end
