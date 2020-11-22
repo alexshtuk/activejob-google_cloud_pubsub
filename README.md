@@ -131,7 +131,8 @@ Put this to your config/activejob_gc_pubsub.rb
 ``` ruby
 ActiveJob::GoogleCloudPubsub.configure do |config|
   # Formatter to use to decorate jobs queue name
-  config.queue_name_formatter = ->(queue_name) { "#{Rails.env}/#{project}/#{queue_name}" }
+  # use, when you want more than one rails project or multiple environgments to connect to the same GCP project
+  config.queue_name_formatter = ->(queue_name) { "#{Rails.env}__#{project}__#{queue_name}" }
 
   # Logger to use  
   config.logger = Rails.logger
