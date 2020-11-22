@@ -124,6 +124,25 @@ Default: number of logical cores
 
 Credentials of Google Cloud Platform. Please see [the document](https://github.com/GoogleCloudPlatform/google-cloud-ruby/blob/master/AUTHENTICATION.md) for details.
 
+### Configuration
+
+Put this to your config/activejob_gc_pubsub.rb
+
+``` ruby
+ActiveJob::GoogleCloudPubsub.configure do |config|
+  # Formatter to use to decorate jobs queue name
+  config.queue_name_formatter = ->(queue_name) { "#{Rails.env}/#{project}/#{queue_name}" }
+
+  # Logger to use  
+  config.logger = Rails.logger
+
+  # Params to use for Google PubSub client initialization
+  config.pubsub_params = { project_id: 'MY-PROJECT-ID', credentials: 'path/to/keyfile.json' }
+end
+```
+
+Configuration is respected by both Adapter and Worker
+
 ### before_publish and before_process callbacks
 
 Library supports callbacks which are executed before job is published to queue by the adapter and before job is processed by the worker
@@ -132,18 +151,17 @@ This is an analogue of Sidekiq's Middlewares.
 
 Helps solve, par example the problem of passing correlation ID for background jobs, so you can always tell which job was created by wich request
 
-Usage example (put this in config/initializers/google_pubsub_adapter.rb):
+Usage example (put this in config/initializers/activejob_gc_pubsub.rb):
 
 ``` ruby
-ActiveJob::GoogleCloudPubsub::Adapter
-  .before_publish(
-    ->(job) { job['__request_id'] = RequestHeadersMiddleware.store['X-Request-Id'.to_sym] } }
-  )
+ActiveJob::GoogleCloudPubsub.configure do |config|
+  config.before_publish_callbacks << ->(job) { job['__request_id'] = RequestHeadersMiddleware.store['X-Request-Id'.to_sym] } }
+end
 
-ActiveJob::GoogleCloudPubsub::Worker
-  .before_process(
+ActiveJob::GoogleCloudPubsub.configure do |config|
+  config.before_process_callbacks <<
     ->(job) { RequestHeadersMiddleware.store['X-Request-Id'.to_sym] = job['__request_id'] || SecureRandom.uuid }
-  )
+end
 ```
 
 (example relies on [RequestHeadersMiddleware](https://github.com/fidor/request_headers_middleware) - nice way to introduce correlation id to the system) 

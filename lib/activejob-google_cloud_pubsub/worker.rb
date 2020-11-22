@@ -13,16 +13,6 @@ module ActiveJob
 
       using PubsubExtension
 
-      class << self
-        def before_process(callback)
-          _before_process_callbacks << callback
-        end
-
-        def _before_process_callbacks
-          @before_process_callbacks ||= []
-        end
-      end
-
       def initialize(queue: 'default', min_threads: 0, max_threads: Concurrent.processor_count, pubsub: Google::Cloud::Pubsub.new, logger: Logger.new($stdout))
         @queue_name  = queue
         @min_threads = min_threads
@@ -94,7 +84,7 @@ module ActiveJob
 
           job = JSON.parse(message.data)
 
-          self.class._before_process_callbacks.each { |callback| callback.call(job) }
+          ActiveJob::GoogleCloudPubsub.before_process_callbacks.each { |callback| callback.call(job) }
 
           ActiveJob::Base.execute job
 

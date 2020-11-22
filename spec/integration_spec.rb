@@ -43,17 +43,14 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
 
   context 'with before_publish callbacks in adapter' do
     before(:all) do
-      @original_callbacks = [*ActiveJob::GoogleCloudPubsub::Adapter._before_publish_callbacks]
+      @original_callbacks = [*ActiveJob::GoogleCloudPubsub.before_publish_callbacks]
 
-      ActiveJob::GoogleCloudPubsub::Adapter
-          .before_publish(
-              ->(job) { job.arguments = job.arguments.map { |name| "Mrs. #{name}" } }
-          )
+      ActiveJob::GoogleCloudPubsub.before_publish_callbacks << ->(job) { job.arguments = job.arguments.map { |name| "Mrs. #{name}" } }
     end
 
     after(:all) do
-      ActiveJob::GoogleCloudPubsub::Adapter._before_publish_callbacks.clear
-      ActiveJob::GoogleCloudPubsub::Adapter._before_publish_callbacks.concat(@original_callbacks)
+      ActiveJob::GoogleCloudPubsub.before_publish_callbacks.clear
+      ActiveJob::GoogleCloudPubsub.before_publish_callbacks.concat(@original_callbacks)
     end
 
     it 'respects callback' do
@@ -67,17 +64,14 @@ RSpec.describe ActiveJob::GoogleCloudPubsub, :use_pubsub_emulator do
 
   context 'with before_process callbacks in worker' do
     before(:all) do
-      @original_callbacks = [*ActiveJob::GoogleCloudPubsub::Worker._before_process_callbacks]
+      @original_callbacks = [*ActiveJob::GoogleCloudPubsub.before_process_callbacks]
 
-      ActiveJob::GoogleCloudPubsub::Worker
-          .before_process(
-              ->(job) { job['arguments'] = job['arguments'].map { |name| "Mrs. #{name}" } }
-          )
+      ActiveJob::GoogleCloudPubsub.before_process_callbacks << ->(job) { job['arguments'] = job['arguments'].map { |name| "Mrs. #{name}" } }
     end
 
     after(:all) do
-      ActiveJob::GoogleCloudPubsub::Worker._before_process_callbacks.clear
-      ActiveJob::GoogleCloudPubsub::Worker._before_process_callbacks.concat(@original_callbacks)
+      ActiveJob::GoogleCloudPubsub.before_process_callbacks.clear
+      ActiveJob::GoogleCloudPubsub.before_process_callbacks.concat(@original_callbacks)
     end
 
     it 'respects callback' do
